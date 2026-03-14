@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS = {
 const CLAUDE_MODEL = 'sonnet'
 const CLAUDE_TIMEOUT_MS = 8000
 const CLAUDE_RETRY_TIMEOUT_MS = 12000
-const MAX_GENERATED_CSS_CHARS = 3500
+const MAX_GENERATED_CSS_CHARS = 6000
 const ALLOWED_SETTINGS = new Set(Object.keys(DEFAULT_SETTINGS))
 const ALLOWED_MODES = new Set(['transform', 'answer', 'both'])
 const ALLOWED_ACTIONS = new Set(['setAttribute', 'hide', 'emphasize', 'focus'])
@@ -295,6 +295,20 @@ function sanitizeDomActions(value) {
     .slice(0, 12)
 }
 
+function sanitizeHistory(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .map((item) => ({
+      role: sanitizeString(item?.role).slice(0, 20),
+      text: sanitizeString(item?.text).replace(/\s+/g, ' ').slice(0, 240),
+    }))
+    .filter((item) => item.role && item.text)
+    .slice(-8)
+}
+
 function compactPageForPrompt(page = {}) {
   const compactInteractive = Array.isArray(page.interactive)
     ? page.interactive
@@ -318,8 +332,25 @@ function compactPageForPrompt(page = {}) {
         .slice(0, 14)
     : []
 
+  const compactStoryItems = Array.isArray(page.storyItems)
+    ? page.storyItems
+        .map((item) => ({
+          href: sanitizeString(item?.href).slice(0, 160),
+          meta: sanitizeString(item?.meta).slice(0, 120),
+          rank: sanitizeString(item?.rank).slice(0, 12),
+          title: sanitizeString(item?.title).slice(0, 120),
+        }))
+        .filter((item) => item.title)
+        .slice(0, 20)
+    : []
+
   return {
+    activeSettings:
+      page.activeSettings && typeof page.activeSettings === 'object'
+        ? sanitizeSettings(page.activeSettings)
+        : { ...DEFAULT_SETTINGS },
     forms: Number(page.forms ?? 0),
+    generatedCss: sanitizeString(page.generatedCss).slice(0, 1200),
     headings: sanitizeStringList(page.headings, 6),
     interactive: compactInteractive,
     issues: {
@@ -329,9 +360,98 @@ function compactPageForPrompt(page = {}) {
     lang: sanitizeString(page.lang).slice(0, 20),
     nodes: compactNodes,
     pageText: sanitizeString(page.pageText).replace(/\s+/g, ' ').slice(0, 900),
+    storyItems: compactStoryItems,
     title: sanitizeString(page.title).slice(0, 120),
     url: sanitizeString(page.url).slice(0, 240),
   }
+}
+
+function shouldResetExistingStyles(transcript) {
+  const input = transcript.toLowerCase()
+
+  return (
+    input.includes('start over') ||
+    input.includes('reset') ||
+    input.includes('remove previous') ||
+    input.includes('clear previous') ||
+    input.includes('undo all') ||
+    input.includes('revert')
+  )
+}
+
+function extractOrdinalIndex(transcript) {
+  const input = transcript.toLowerCase()
+  const wordMap = new Map([
+    ['first', 0],
+    ['second', 1],
+    ['third', 2],
+    ['fourth', 3],
+    ['fifth', 4],
+    ['sixth', 5],
+    ['seventh', 6],
+    ['eighth', 7],
+    ['ninth', 8],
+    ['tenth', 9],
+  ])
+
+  for (const [word, index] of wordMap.entries()) {
+    if (input.includes(word)) {
+      return index
+    }
+  }
+
+  const numericMatch = input.match(/\b(\d+)(?:st|nd|rd|th)?\b/)
+
+  if (numericMatch) {
+    return Number(numericMatch[1]) - 1
+  }
+
+  return -1
+}
+
+function formatOrdinalLabel(index) {
+  const value = index + 1
+  const mod10 = value % 10
+  const mod100 = value % 100
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return `${value}st`
+  }
+
+  if (mod10 === 2 && mod100 !== 12) {
+    return `${value}nd`
+  }
+
+  if (mod10 === 3 && mod100 !== 13) {
+    return `${value}rd`
+  }
+
+  return `${value}th`
+}
+
+function deriveStructuredAnswer(transcript, page = {}) {
+  const input = transcript.toLowerCase()
+  const isPostQuery =
+    input.includes('post') ||
+    input.includes('story') ||
+    input.includes('item') ||
+    input.includes('link')
+
+  if (!isPostQuery) {
+    return ''
+  }
+
+  const ordinalIndex = extractOrdinalIndex(transcript)
+
+  if (ordinalIndex < 0 || !Array.isArray(page.storyItems) || !page.storyItems[ordinalIndex]) {
+    return ''
+  }
+
+  const story = page.storyItems[ordinalIndex]
+  const ordinalLabel = formatOrdinalLabel(ordinalIndex)
+  const meta = story.meta ? ` ${story.meta}` : ''
+
+  return `The ${ordinalLabel} post is "${story.title}".${meta}`
 }
 
 function validatePlanShape(value) {
@@ -407,8 +527,10 @@ html article {
 `]
 
   const mainActions = sanitizeStringList(page?.interactive?.map((item) => item.label), 3)
+  const structuredAnswer = deriveStructuredAnswer(transcript, page)
   const answer = asksQuestion
-    ? `This page is ${sanitizeString(page?.title, 'the current page')}. Main actions include ${mainActions.join(', ') || 'the visible controls on screen'}.`
+    ? structuredAnswer ||
+      `This page is ${sanitizeString(page?.title, 'the current page')}. Main actions include ${mainActions.join(', ') || 'the visible controls on screen'}.`
     : ''
 
   return {
@@ -511,13 +633,17 @@ async function runAgentJsonTask({ fallback, prompt }) {
   return { plan, trace, usedFallback: true }
 }
 
-async function buildAgentPlan({ page, transcript }) {
+async function buildAgentPlan({ history, page, transcript }) {
   const promptPage = compactPageForPrompt(page)
+  const promptHistory = sanitizeHistory(history)
   const prompt = `
 You are an accessibility UI restyling agent for a browser extension.
 
 User request:
 ${transcript}
+
+Recent conversation:
+${JSON.stringify(promptHistory, null, 2)}
 
 Page snapshot:
 ${JSON.stringify(promptPage, null, 2)}
@@ -553,6 +679,9 @@ Return valid JSON only with this shape:
 Rules:
 - The UI must be generated by your reasoning, not by selecting a preset.
 - If the user says "make it look like YouTube" or "Spotify", generate CSS that approximates that visual language on this specific page.
+- The page may already have generatedCss applied from a previous request. Treat that as the current baseline and preserve useful earlier progress unless the user is clearly replacing it.
+- When generatedCss already exists, return the full updated stylesheet for the current state, not just a tiny standalone fragment.
+- Use storyItems and other structured page data when the user asks factual questions about visible page content.
 - Use nodeIds from the snapshot when you need element-specific actions.
 - generatedCss must be reversible, page-local, and CSS-only.
 - Every selector in generatedCss must start with html.
@@ -570,6 +699,30 @@ Rules:
     fallback: (error) => buildFallbackPlan({ page, reason: error?.message, transcript }),
     prompt,
   })
+
+  if (
+    page.generatedCss &&
+    result.plan.mode !== 'answer' &&
+    result.plan.generatedCss &&
+    !shouldResetExistingStyles(transcript)
+  ) {
+    const combinedCss = `${page.generatedCss}\n\n${result.plan.generatedCss}`
+
+    if (combinedCss.length <= MAX_GENERATED_CSS_CHARS) {
+      result.plan.generatedCss = combinedCss
+    }
+  }
+
+  const structuredAnswer = deriveStructuredAnswer(transcript, page)
+
+  if (structuredAnswer) {
+    result.plan.pageAnswer = structuredAnswer
+    result.plan.mode = result.plan.mode === 'transform' ? 'both' : result.plan.mode
+
+    if (!result.plan.voiceResponse || result.plan.voiceResponse === result.plan.summary) {
+      result.plan.voiceResponse = structuredAnswer
+    }
+  }
 
   result.plan.settings = constrainSettings(
     result.plan.settings,
@@ -690,6 +843,7 @@ const server = createServer(async (request, response) => {
       }
 
       const result = await buildAgentPlan({
+        history: payload.history,
         page: payload.page,
         transcript: payload.transcript.trim(),
       })

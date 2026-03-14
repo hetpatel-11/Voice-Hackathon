@@ -27,10 +27,14 @@
       </section>
 
       <section class="trace-panel">
-        <details id="traceDetails">
+        <details id="traceDetails" open>
           <summary>Under the Hood</summary>
           <div class="trace-body">
-            <p id="traceSummary">No agent run yet.</p>
+            <p id="traceSummary">
+              Waiting for a command. The panel will show each step as the
+              extension captures the page, calls Claude, applies the result, and
+              uses Smallest voice.
+            </p>
             <ul id="traceList"></ul>
           </div>
         </details>
@@ -54,6 +58,13 @@
             Send
           </button>
         </div>
+        <label class="toggle-row" for="persistToggle">
+          <span>Keep changes after reload</span>
+          <input id="persistToggle" type="checkbox" />
+        </label>
+        <button id="fixMicButton" class="link-button hidden" type="button">
+          Open microphone settings
+        </button>
         <p id="statusText" class="status-text">Idle.</p>
       </section>
     </main>

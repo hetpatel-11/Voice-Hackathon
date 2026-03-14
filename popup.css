@@ -7,16 +7,23 @@
 
 body {
   margin: 0;
-  min-width: 400px;
+  width: 380px;
+  min-width: 380px;
+  max-width: 380px;
+  min-height: 580px;
   background:
     radial-gradient(circle at top, rgba(31, 212, 118, 0.14), transparent 36%),
     linear-gradient(180deg, #0d1217, #06080b 72%);
+  overflow: hidden;
 }
 
 .popup-shell {
   padding: 16px;
   display: grid;
   gap: 12px;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  min-height: 580px;
+  box-sizing: border-box;
 }
 
 .chat-header,
@@ -30,8 +37,7 @@ body {
 
 .chat-header {
   padding: 16px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
   gap: 12px;
   align-items: start;
 }
@@ -51,18 +57,20 @@ h1 {
 
 .health-pill {
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.08);
   color: #d9fce3;
   font-size: 0.82rem;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .chat-feed {
   padding: 14px;
   display: grid;
   gap: 10px;
-  max-height: 320px;
+  min-height: 0;
+  max-height: 100%;
   overflow: auto;
 }
 
@@ -79,21 +87,25 @@ h1 {
 }
 
 .bubble {
-  max-width: 88%;
+  max-width: 100%;
   padding: 12px 14px;
   border-radius: 18px;
   line-height: 1.55;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .message.user .bubble {
   background: #1fd476;
   color: #062612;
+  max-width: 86%;
 }
 
 .message.assistant .bubble {
   background: rgba(255, 255, 255, 0.08);
   color: #edf2f7;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .trace-panel details {
@@ -142,11 +154,12 @@ h1 {
   color: #edf4ee;
   background: rgba(255, 255, 255, 0.04);
   resize: vertical;
+  min-height: 88px;
 }
 
 .composer-row {
   display: grid;
-  grid-template-columns: 110px 110px 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -159,6 +172,35 @@ h1 {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.link-button {
+  border: 0;
+  background: transparent;
+  color: #8dcfa0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.92rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #d4dfd7;
+  font-size: 0.92rem;
+}
+
+.toggle-row input {
+  width: 18px;
+  height: 18px;
+}
+
+.hidden {
+  display: none !important;
 }
 
 .primary-button {
@@ -180,4 +222,5 @@ h1 {
   margin: 0;
   color: #d4dfd7;
   min-height: 1.3em;
+  font-size: 0.92rem;
 }

@@ -6,8 +6,14 @@ const DEFAULT_SETTINGS = {
   readableSpacing: false,
   reduceMotion: false,
 }
+const PERSIST_ENABLED_KEY = 'voiceRestylerPersistEnabled'
 
 let currentSettings = { ...DEFAULT_SETTINGS }
+let currentPlan = {
+  domActions: [],
+  generatedCss: '',
+  settings: { ...DEFAULT_SETTINGS },
+}
 const actionCleanup = new Map()
 
 function getInteractiveLabel(element) {
@@ -63,7 +69,48 @@ function buildNodeMap() {
     }))
 }
 
+function getPageStorageKey() {
+  return `voiceRestylerPageState:${location.origin}${location.pathname}`
+}
+
+function buildStoryItems() {
+  const hackerNewsRows = [...document.querySelectorAll('tr.athing')].slice(0, 20)
+
+  if (hackerNewsRows.length) {
+    return hackerNewsRows.map((row, index) => {
+      const titleLink = row.querySelector('.titleline a') || row.querySelector('.title a')
+      const rankText = row.querySelector('.rank')?.textContent?.trim() || `${index + 1}.`
+      const metadataRow = row.nextElementSibling
+      const metaText = metadataRow?.querySelector('.subtext')?.textContent?.trim() || ''
+
+      return {
+        href: titleLink?.href || '',
+        meta: metaText,
+        rank: rankText.replace(/\.$/, ''),
+        title: titleLink?.textContent?.trim() || '',
+      }
+    })
+  }
+
+  return [...document.querySelectorAll('article, main li, [role="article"]')]
+    .map((element, index) => {
+      const headingLink =
+        element.querySelector('h1 a, h2 a, h3 a, h4 a, a[href]') || element.querySelector('a[href]')
+
+      return {
+        href: headingLink?.href || '',
+        meta: '',
+        rank: String(index + 1),
+        title: headingLink?.textContent?.trim() || '',
+      }
+    })
+    .filter((item) => item.title)
+    .slice(0, 20)
+}
+
 function buildPageSnapshot() {
+  const generatedStyle = document.getElementById('voice-restyler-generated-style')
+  const storyItems = buildStoryItems()
   const headings = [...document.querySelectorAll('h1, h2, h3')]
     .map((element) => element.textContent?.trim())
     .filter(Boolean)
@@ -84,7 +131,9 @@ function buildPageSnapshot() {
     .slice(0, 10)
 
   return {
+    activeSettings: currentSettings,
     forms: document.forms.length,
+    generatedCss: generatedStyle?.textContent || '',
     headings,
     interactive,
     issues: {
@@ -94,6 +143,7 @@ function buildPageSnapshot() {
     lang: document.documentElement.lang || '',
     nodes: buildNodeMap(),
     pageText: paragraphs.join(' ').slice(0, 2200),
+    storyItems,
     title: document.title,
     url: location.href,
   }
@@ -101,6 +151,7 @@ function buildPageSnapshot() {
 
 function applySettings(settings) {
   currentSettings = { ...DEFAULT_SETTINGS, ...settings }
+  currentPlan.settings = { ...currentSettings }
   const root = document.documentElement
 
   root.classList.toggle('voice-restyler-high-contrast', currentSettings.highContrast)
@@ -112,8 +163,6 @@ function applySettings(settings) {
   )
   root.classList.toggle('voice-restyler-focus-mode', currentSettings.focusMode)
   root.classList.toggle('voice-restyler-reduce-motion', currentSettings.reduceMotion)
-
-  chrome.storage.sync.set({ restylerSettings: currentSettings })
 }
 
 function applyHeuristicLabels() {
@@ -144,6 +193,7 @@ function applyGeneratedCss(cssText) {
   }
 
   styleElement.textContent = cssText || ''
+  currentPlan.generatedCss = cssText || ''
 }
 
 function rememberCleanup(target, cleanup) {
@@ -180,6 +230,7 @@ function resetDomActions() {
 
 function applyDomActions(actions = []) {
   resetDomActions()
+  currentPlan.domActions = Array.isArray(actions) ? actions : []
 
   actions.forEach((action) => {
     const nodeId = typeof action?.nodeId === 'string' ? action.nodeId : ''
@@ -273,10 +324,78 @@ function applyDomActions(actions = []) {
   })
 }
 
-chrome.storage.sync.get({ restylerSettings: DEFAULT_SETTINGS }, (data) => {
-  applySettings(data.restylerSettings)
+function setCurrentPlan(plan) {
+  currentPlan = {
+    domActions: Array.isArray(plan?.domActions) ? plan.domActions : [],
+    generatedCss: typeof plan?.generatedCss === 'string' ? plan.generatedCss : '',
+    settings:
+      plan?.settings && typeof plan.settings === 'object'
+        ? { ...DEFAULT_SETTINGS, ...plan.settings }
+        : { ...DEFAULT_SETTINGS },
+  }
+}
+
+function loadPagePersistence(callback) {
+  const pageKey = getPageStorageKey()
+
+  chrome.storage.local.get(
+    {
+      [PERSIST_ENABLED_KEY]: false,
+      [pageKey]: null,
+    },
+    (data) => {
+      callback({
+        enabled: Boolean(data[PERSIST_ENABLED_KEY]),
+        pageKey,
+        pageState: data[pageKey],
+      })
+    },
+  )
+}
+
+function persistCurrentPageState() {
+  loadPagePersistence(({ enabled, pageKey }) => {
+    if (!enabled) {
+      return
+    }
+
+    chrome.storage.local.set({
+      [pageKey]: {
+        domActions: currentPlan.domActions,
+        generatedCss: currentPlan.generatedCss,
+        settings: currentPlan.settings,
+      },
+    })
+  })
+}
+
+function clearPersistedPageState() {
+  chrome.storage.local.remove(getPageStorageKey())
+}
+
+function restorePersistedPageState(pageState) {
+  if (!pageState || typeof pageState !== 'object') {
+    return
+  }
+
+  applySettings(pageState.settings ?? DEFAULT_SETTINGS)
   applyHeuristicLabels()
-  ensureNodeAnnotations()
+  applyGeneratedCss(pageState.generatedCss ?? '')
+  applyDomActions(pageState.domActions ?? [])
+  setCurrentPlan({
+    domActions: pageState.domActions ?? [],
+    generatedCss: pageState.generatedCss ?? '',
+    settings: pageState.settings ?? DEFAULT_SETTINGS,
+  })
+}
+
+applySettings(DEFAULT_SETTINGS)
+applyHeuristicLabels()
+ensureNodeAnnotations()
+loadPagePersistence(({ enabled, pageState }) => {
+  if (enabled && pageState) {
+    restorePersistedPageState(pageState)
+  }
 })
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -290,7 +409,34 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     applyHeuristicLabels()
     applyGeneratedCss(message.plan?.generatedCss ?? '')
     applyDomActions(message.plan?.domActions ?? [])
+    setCurrentPlan(message.plan ?? {})
+    persistCurrentPageState()
     sendResponse({ ok: true })
+    return true
+  }
+
+  if (message.type === 'GET_PERSISTENCE_STATE') {
+    loadPagePersistence(({ enabled, pageState }) => {
+      sendResponse({
+        enabled,
+        hasPersistedState: Boolean(pageState?.generatedCss),
+      })
+    })
+    return true
+  }
+
+  if (message.type === 'SET_PERSISTENCE_ENABLED') {
+    const enabled = Boolean(message.enabled)
+
+    chrome.storage.local.set({ [PERSIST_ENABLED_KEY]: enabled }, () => {
+      if (enabled) {
+        persistCurrentPageState()
+      } else {
+        clearPersistedPageState()
+      }
+
+      sendResponse({ enabled, ok: true })
+    })
     return true
   }
 

@@ -3,11 +3,23 @@
   "name": "Voice Access Restyler",
   "version": "0.1.0",
   "description": "Restyle websites for better accessibility and control them with voice-first extension commands.",
-  "permissions": ["activeTab", "storage"],
+  "permissions": ["activeTab", "storage", "scripting"],
   "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_title": "Voice Access Restyler",
     "default_popup": "popup.html"
+  },
+  "commands": {
+    "start-voice-shortcut": {
+      "suggested_key": {
+        "default": "Alt+Shift+V",
+        "mac": "Command+Shift+V"
+      },
+      "description": "Open the popup and start voice capture"
+    }
   },
   "content_scripts": [
     {
