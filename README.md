@@ -1,6 +1,6 @@
 # Web Copilot
 
-Web Copilot is a Chrome Manifest V3 extension that lets you talk to any website, restyle it for accessibility, and ask page-specific questions in plain English.
+A voice-first Chrome extension that uses Smallest for speech, Claude as a background agent, and live DOM rewriting to make any website more accessible and interactive in real time.
 
 It uses:
 - Smallest `Pulse STT` for speech-to-text
