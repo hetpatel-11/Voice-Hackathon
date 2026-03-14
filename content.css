@@ -1,0 +1,51 @@
+html.voice-restyler-large-text body {
+  font-size: 18px !important;
+}
+
+html.voice-restyler-readable-spacing body,
+html.voice-restyler-readable-spacing p,
+html.voice-restyler-readable-spacing li,
+html.voice-restyler-readable-spacing input,
+html.voice-restyler-readable-spacing textarea,
+html.voice-restyler-readable-spacing button {
+  line-height: 1.75 !important;
+  letter-spacing: 0.015em !important;
+}
+
+html.voice-restyler-highlight-interactive :where(a, button, input, textarea, select, [role="button"]) {
+  box-shadow: inset 0 0 0 1px rgba(255, 191, 71, 0.55) !important;
+  border-radius: 10px !important;
+}
+
+html.voice-restyler-reduce-motion *,
+html.voice-restyler-reduce-motion *::before,
+html.voice-restyler-reduce-motion *::after {
+  animation: none !important;
+  scroll-behavior: auto !important;
+  transition: none !important;
+}
+
+html.voice-restyler-focus-mode :where(aside, footer, [role="complementary"], [class*="ad"], [id*="ad"]) {
+  opacity: 0.18 !important;
+  filter: grayscale(1) !important;
+}
+
+html.voice-restyler-high-contrast body {
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+
+html.voice-restyler-high-contrast :where(main, article, section, nav, aside, header, footer, button, input, textarea, select, label) {
+  border-color: #111111 !important;
+  color: #111111 !important;
+}
+
+html.voice-restyler-high-contrast a {
+  color: #0046b8 !important;
+  text-decoration: underline !important;
+}
+
+html.voice-restyler-high-contrast button {
+  background: #111111 !important;
+  color: #ffffff !important;
+}

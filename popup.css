@@ -1,0 +1,183 @@
+:root {
+  color-scheme: dark;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  background: #0b0e12;
+  color: #edf2f7;
+}
+
+body {
+  margin: 0;
+  min-width: 400px;
+  background:
+    radial-gradient(circle at top, rgba(31, 212, 118, 0.14), transparent 36%),
+    linear-gradient(180deg, #0d1217, #06080b 72%);
+}
+
+.popup-shell {
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.chat-header,
+.trace-panel,
+.composer,
+.chat-feed {
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chat-header {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  color: #8dcfa0;
+}
+
+h1 {
+  margin: 8px 0 0;
+  font-size: 1.35rem;
+}
+
+.health-pill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d9fce3;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.chat-feed {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.message {
+  display: flex;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.message.assistant {
+  justify-content: flex-start;
+}
+
+.bubble {
+  max-width: 88%;
+  padding: 12px 14px;
+  border-radius: 18px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.message.user .bubble {
+  background: #1fd476;
+  color: #062612;
+}
+
+.message.assistant .bubble {
+  background: rgba(255, 255, 255, 0.08);
+  color: #edf2f7;
+}
+
+.trace-panel details {
+  padding: 14px;
+}
+
+.trace-panel summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.trace-body {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+#traceSummary {
+  margin: 0;
+  color: #d4dfd7;
+}
+
+#traceList {
+  margin: 0;
+  padding-left: 18px;
+  color: #c4d0d7;
+}
+
+#traceList li + li {
+  margin-top: 6px;
+}
+
+.composer {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.command-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 12px;
+  font: inherit;
+  color: #edf4ee;
+  background: rgba(255, 255, 255, 0.04);
+  resize: vertical;
+}
+
+.composer-row {
+  display: grid;
+  grid-template-columns: 110px 110px 1fr;
+  gap: 10px;
+}
+
+.primary-button,
+.secondary-button {
+  border: 0;
+  border-radius: 999px;
+  min-height: 44px;
+  padding: 0 16px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-button {
+  background: #1fd476;
+  color: #072712;
+}
+
+.secondary-button {
+  background: rgba(255, 255, 255, 0.08);
+  color: #edf2f7;
+}
+
+.secondary-button.is-recording {
+  background: #ff875e;
+  color: #2b0700;
+}
+
+.status-text {
+  margin: 0;
+  color: #d4dfd7;
+  min-height: 1.3em;
+}

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voice Access Restyler</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="popup-shell">
+      <header class="chat-header">
+        <div>
+          <p class="eyebrow">Voice-first accessibility agent</p>
+          <h1>Website Copilot</h1>
+        </div>
+        <div id="healthPill" class="health-pill">Checking services...</div>
+      </header>
+
+      <section id="chatFeed" class="chat-feed" aria-live="polite">
+        <article class="message assistant">
+          <div class="bubble">
+            Ask what should change on this page. I can restyle it, answer a
+            page question, show Claude's execution trace, and read the response
+            back with Smallest voice.
+          </div>
+        </article>
+      </section>
+
+      <section class="trace-panel">
+        <details id="traceDetails">
+          <summary>Under the Hood</summary>
+          <div class="trace-body">
+            <p id="traceSummary">No agent run yet.</p>
+            <ul id="traceList"></ul>
+          </div>
+        </details>
+      </section>
+
+      <section class="composer">
+        <textarea
+          id="commandInput"
+          class="command-input"
+          rows="3"
+          placeholder="Ask a question or describe how the page should change..."
+        ></textarea>
+        <div class="composer-row">
+          <button id="recordButton" class="secondary-button" type="button">
+            Voice
+          </button>
+          <button id="testVoiceButton" class="secondary-button" type="button">
+            Test voice
+          </button>
+          <button id="sendButton" class="primary-button" type="button">
+            Send
+          </button>
+        </div>
+        <p id="statusText" class="status-text">Idle.</p>
+      </section>
+    </main>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

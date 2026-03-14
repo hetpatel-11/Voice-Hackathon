@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Voice Access Restyler",
+  "version": "0.1.0",
+  "description": "Restyle websites for better accessibility and control them with voice-first extension commands.",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "Voice Access Restyler",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
