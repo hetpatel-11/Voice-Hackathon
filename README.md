@@ -1,6 +1,6 @@
-# Voice Access Restyler
+# Web Copilot
 
-Voice Access Restyler is a Chrome Manifest V3 extension that lets you talk to any website, restyle it for accessibility, and ask page-specific questions in plain English.
+Web Copilot is a Chrome Manifest V3 extension that lets you talk to any website, restyle it for accessibility, and ask page-specific questions in plain English.
 
 It uses:
 - Smallest `Pulse STT` for speech-to-text
