@@ -1,24 +1,49 @@
 # Voice Access Restyler
 
-Voice Access Restyler is a Chrome-compatible Manifest V3 extension plus a local Node service.
+Voice Access Restyler is a Chrome Manifest V3 extension that lets you talk to any website, restyle it for accessibility, and ask page-specific questions in plain English.
 
-- The extension captures voice commands from the popup.
-- Smallest Pulse STT transcribes the audio.
-- The Claude Agent SDK analyzes the current page snapshot and returns generated CSS plus element-level actions.
-- The content script applies reversible HTML/CSS accessibility changes.
-- Smallest expressive TTS speaks the response back to the user.
+It uses:
+- Smallest `Pulse STT` for speech-to-text
+- Smallest `Lightning TTS` for spoken responses
+- Claude as the background agent through the [Anthropic Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview)
+- a content script to capture the live DOM, apply CSS/DOM changes, and optionally persist those changes across reloads
 
-## What it changes
+![Voice Access Restyler demo](demo.png)
 
-- higher contrast
-- larger text
-- improved spacing
-- highlighted interactive controls
-- reduced motion
-- focus mode to de-emphasize distracting side regions
-- heuristic `aria-label` fixes for unlabeled controls
+## What It Does
 
-## Local service
+- captures voice or typed requests from the extension popup
+- snapshots the active page structure, content, controls, and visible post/story listings
+- sends that page snapshot plus recent conversation history to Claude
+- gets back structured JSON with:
+  - `pageAnswer`
+  - `summary`
+  - `voiceResponse`
+  - `generatedCss`
+  - `domActions`
+  - `settings`
+- applies the generated UI changes directly to the live page
+- speaks the response back with Smallest voice
+
+## Example Use Cases
+
+- “Make this page easier to read”
+- “Keep this design but make the cards more rounded”
+- “What is the third post on this page?”
+- “Make this feel more like YouTube, but cleaner”
+- “Increase contrast without losing the current layout”
+
+## Architecture
+
+1. The popup captures text or voice input.
+2. Smallest `Pulse STT` converts speech to text.
+3. The content script builds a structured page snapshot.
+4. The local Node service sends the request to Claude through the Agent SDK.
+5. Claude returns a structured plan for UI changes and answers.
+6. The content script applies CSS and DOM actions in the current tab.
+7. Smallest `Lightning TTS` speaks the final response back.
+
+## Local Service
 
 The local service runs at `http://127.0.0.1:8787` and exposes:
 
@@ -27,42 +52,64 @@ The local service runs at `http://127.0.0.1:8787` and exposes:
 - `POST /api/voice/speak`
 - `POST /api/agent/page-plan`
 
-`/api/agent/page-plan` uses the [Claude Agent SDK overview](https://platform.claude.com/docs/en/agent-sdk/overview) approach programmatically through `@anthropic-ai/claude-agent-sdk`, with retries and output validation before any generated changes are applied.
+The page-plan endpoint uses Claude via `@anthropic-ai/claude-agent-sdk`, with retries, validation, and trace output before applying any generated changes.
 
 ## Setup
 
-1. Copy `.env.example` to `.env.local`.
+1. Create `.env.local` from `.env.example`.
 2. Set:
    - `ANTHROPIC_API_KEY`
    - `SMALLEST_API_KEY`
-3. Run `npm install`.
-4. Run `npm run dev`.
-5. Open Chrome extensions.
-6. Enable developer mode.
-7. Click `Load unpacked`.
-8. Select this folder.
+3. Install dependencies:
+
+```bash
+npm install
+```
+
+4. Start the local service:
+
+```bash
+npm run dev
+```
+
+5. In Chrome:
+   - open `chrome://extensions`
+   - enable `Developer mode`
+   - click `Load unpacked`
+   - select this folder
 
 ## Usage
 
-1. Open any website.
+### Popup
+
+1. Open any normal website.
 2. Open the extension popup.
-3. Click `Start voice command`.
-4. Say something like:
-   - "Make this page easier to read"
-   - "Increase contrast and highlight the buttons"
-   - "Read the important parts of this page"
-   - "Change this UI to feel more like YouTube"
-   - "Change this UI to feel more like Spotify"
-   - "What are the most important actions on this page?"
+3. Type a command or click `Voice`.
+4. If you use `Voice`, press `Stop` when you are done speaking.
 
-## Voice stack
+### Keyboard Shortcut
 
-- Smallest STT cookbook reference: [speech-to-text getting started](https://github.com/smallest-inc/cookbook/tree/main/speech-to-text/getting-started)
-- Smallest expressive TTS cookbook reference: [expressive-tts](https://github.com/smallest-inc/cookbook/tree/main/text-to-speech/expressive-tts)
+- Default Mac shortcut: `Command+Shift+V`
+- Default Windows/Linux shortcut: `Alt+Shift+V`
+
+The shortcut opens the popup, starts voice capture automatically, and sends the command when you stop speaking.
+
+You can change the shortcut in `chrome://extensions/shortcuts`.
+
+### Persistence
+
+- Turn on `Keep changes after reload` if you want page changes to remain after refreshing the website.
+- Leave it off if you want transformations to stay temporary.
+
+## Voice Stack
+
+- Smallest Waves docs: [Getting started](https://waves-docs.smallest.ai/v4.0.0/content/getting-started/introduction)
+- Smallest STT cookbook: [speech-to-text getting started](https://github.com/smallest-inc/cookbook/tree/main/speech-to-text/getting-started)
+- Smallest expressive TTS cookbook: [expressive-tts](https://github.com/smallest-inc/cookbook/tree/main/text-to-speech/expressive-tts)
 
 ## Notes
 
-- The extension is load-unpacked and does not need a frontend build step.
-- The Claude agent is API-backed. The local service is only a thin wrapper for the extension.
-- Accessibility fixes are reversible and validated before application.
-- The agent generates page-specific CSS and node actions instead of selecting from hardcoded visual presets.
+- This is a load-unpacked extension. There is no frontend build step.
+- Claude is API-backed. The local server is an orchestration layer, not a local model.
+- The agent generates page-specific CSS and DOM actions instead of using hardcoded visual presets.
+- The quality of page answers depends on the fidelity of the DOM snapshot captured from the current tab.
